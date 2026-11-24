@@ -1,5 +1,5 @@
-import csv, glob, json, re, sys
-base = '/home/claude/trb-tribute-platform/TRB_Research/TRB_Dedication-Pricing/'
+import csv, glob, json, os, re, sys
+base = os.environ.get('TRB_PRICING_DIR', '../TRB-tribute-platform/TRB_Research/TRB_Dedication-Pricing').rstrip('/') + '/'
 files = [base+'TRB_Dedication-Pricing-Master-Dataset.csv'] + sorted(glob.glob(base+'workstreams/track-05/*Batch*.csv'))
 GROUP = {'senior_living':'senior','private_residential':'neighborhood','municipality':'city',
  'botanical_garden':'garden','arboretum':'garden','conservancy':'garden','public_park':'garden',
