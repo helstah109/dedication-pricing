@@ -4,6 +4,11 @@ name: Update prices from research
 # Needs the repo secret TRB_READ_TOKEN: a read-only key to helstah109/TRB-tribute-platform.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - tools/gen.py
+      - .github/workflows/update-prices.yml
   schedule:
     - cron: "15 11 * * *"   # once a day, early morning Eastern
 
