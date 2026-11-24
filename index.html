@@ -49,8 +49,9 @@ details.more[open] summary::before{content:"− "}
 .summary{display:flex;flex-direction:column;gap:10px}
 .sumline{font-size:17px;margin:0}
 .sumline b{font-weight:600}
-.strip{width:100%;overflow-x:auto}
-.strip svg{display:block;width:100%;min-width:520px;height:auto}
+.strip{width:100%}
+.strip svg{display:block;width:100%;height:auto}
+.sumnote{font-size:14px;color:var(--muted);margin:0}
 .strip text{fill:var(--muted);font-family:var(--body);font-size:12px}
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
@@ -144,6 +145,7 @@ details.more[open] summary::before{content:"− "}
 
   <section class="summary" aria-live="polite">
     <p class="sumline" id="sumline"></p>
+    <p class="sumnote" id="sumnote">These are prices places post today, not a recommended price.</p>
     <div class="strip" id="strip"></div>
     <div class="legend"><span><span class="dot" style="background:var(--new)"></span>Plant a new tree</span><span><span class="dot" style="background:var(--old)"></span>Dedicate a tree already growing</span><span><span class="dot" style="background:var(--muted)"></span>Not stated</span></div>
   </section>
@@ -199,18 +201,19 @@ const STATES={AL:"Alabama",AZ:"Arizona",CA:"California",CO:"Colorado",DC:"Washin
 function quant(a,q){const s=[...a].sort((x,y)=>x-y);const i=(s.length-1)*q,lo=Math.floor(i),hi=Math.ceil(i);return s[lo]+(s[hi]-s[lo])*(i-lo);}
 function usd(n){n=n>=1000?Math.round(n/50)*50:Math.round(n/10)*10;return "$"+n.toLocaleString("en-US");}
 function strip(offers){
-  const W=760,H=86,L=24,R=24,min=Math.log(150),max=Math.log(30000);
-  const x=v=>L+(Math.log(v)-min)/(max-min)*(W-L-R);
-  const ticks=[250,500,1000,2500,5000,10000,25000];
-  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Each dot is one US-dollar price on a stretched scale from $250 to $25,000">`;
+  const W=Math.max(260,Math.round($("strip").clientWidth||760)),H=86,L=22,R=26,min=Math.log(150),max=Math.log(30000);
+  const x=v=>L+(Math.log(Math.min(Math.max(v,150),30000))-min)/(max-min)*(W-L-R);
+  const ticks=W<520?[250,1000,5000,25000]:[250,500,1000,2500,5000,10000,25000];
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Each dot is one US-dollar price on a stretched scale from $250 to $25,000">`;
   s+=`<line x1="${L}" x2="${W-R}" y1="46" y2="46" stroke="var(--line)" stroke-width="2"/>`;
   ticks.forEach(t=>{s+=`<line x1="${x(t)}" x2="${x(t)}" y1="40" y2="52" stroke="var(--line)"/><text x="${x(t)}" y="72" text-anchor="middle">${t>=1000?"$"+t/1000+"k":"$"+t}</text>`;});
   const used={};
-  offers.forEach(o=>{const cx=Math.round(x(o.usd));const k=Math.round(cx/7);used[k]=(used[k]||0)+1;const cy=46-(used[k]-1)*9-0;
+  offers.forEach(o=>{const cx=Math.round(x(o.usd));const k=Math.round(cx/7);used[k]=(used[k]||0)+1;const cy=46-(used[k]-1)*9;
     const col=o.gift==="new"?"var(--new)":o.gift==="existing"?"var(--old)":"var(--muted)";
     s+=`<circle cx="${cx}" cy="${Math.max(6,cy)}" r="4.5" fill="${col}" fill-opacity=".85"><title>${esc(o._place)}: ${esc(o.price)}</title></circle>`;});
   return s+"</svg>";
 }
+function money(n){return "$"+Math.round(n).toLocaleString("en-US");}
 function render(){
   const asks=$("asks").checked;
   let shown=[];
@@ -227,8 +230,9 @@ function render(){
   const priced=shown.filter(p=>p.match.length).length;
   $("count").textContent=`${priced} place${priced===1?"":"s"} · ${offers.length} option${offers.length===1?"":"s"}`+(shown.length>priced?` · ${shown.length-priced} with price on request`:"");
   if(us.length>=4){
-    $("sumline").innerHTML=`Most of these US prices fall between <b>${usd(quant(us.map(o=>o.usd),.25))}</b> and <b>${usd(quant(us.map(o=>o.usd),.75))}</b>. The middle price is <b>${usd(quant(us.map(o=>o.usd),.5))}</b>.`;
-  } else if(us.length){ $("sumline").innerHTML=`Only ${us.length} US price${us.length===1?"":"s"} match. Widen your choices for a fuller picture.`; }
+    const v=us.map(o=>o.usd);
+    $("sumline").innerHTML=`Places charge from <b>${money(Math.min(...v))}</b> to <b>${money(Math.max(...v))}</b> for these choices. Half of the prices fall between <b>${usd(quant(v,.25))}</b> and <b>${usd(quant(v,.75))}</b>.`;
+  } else if(us.length){ const v=us.map(o=>o.usd); $("sumline").innerHTML=us.length===1?`Only one US price matches: <b>${money(v[0])}</b>. Widen your choices for a fuller picture.`:`Only ${us.length} US prices match, from <b>${money(Math.min(...v))}</b> to <b>${money(Math.max(...v))}</b>. Widen your choices for a fuller picture.`; }
   else $("sumline").textContent="No US-dollar prices match these choices yet.";
   $("strip").innerHTML=us.length?strip(us):"";
   const c=$("cards");
@@ -261,6 +265,7 @@ function reset(){state.type="";state.gift="";["term","budget"].forEach(i=>$(i).v
 function init(){chips($("typeChips"),TYPES,"type");chips($("giftChips"),GIFTS,"gift");render();}
 ["term","budget","plaque","online","intl","asks","sort"].forEach(i=>$(i).addEventListener("change",render));
 $("search").addEventListener("input",render);
+let rsz;window.addEventListener("resize",()=>{clearTimeout(rsz);rsz=setTimeout(()=>{if(DATA.length)render();},150);});
 fetch("data.json",{cache:"no-cache"}).then(r=>r.json()).then(d=>{DATA=d;init();}).catch(()=>{$("cards").innerHTML='<div class="empty">The price list didn\'t load. Refresh the page to try again.</div>';});
 </script>
 
