@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>Tree Dedication Price Finder</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="See what gardens, senior living communities, neighborhoods and campuses charge to dedicate a tree.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one calm column; questions first, a price strip as the summary, then one card per place. */
+:root{
+  --bg:#f5f8f4; --surface:#ffffff; --ink:#1c2a21; --muted:#56675b; --line:#d7e0d8;
+  --accent:#2d6a47; --accent-ink:#ffffff; --soft:#e2eee5;
+  --new:#3a8a5a; --old:#8d6a3b; --warn:#8a5a00; --warn-soft:#fbf1dc;
+  --display:"Fraunces", Georgia, "Times New Roman", serif;
+  --body:"Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#111713; --surface:#18211b; --ink:#e5ece6; --muted:#9db0a2; --line:#2b3830;
+  --accent:#7cc49b; --accent-ink:#0f1a13; --soft:#1e3227; --new:#7cc49b; --old:#d0a46c; --warn:#f0c26a; --warn-soft:#2e2615; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#111713; --surface:#18211b; --ink:#e5ece6; --muted:#9db0a2; --line:#2b3830;
+  --accent:#7cc49b; --accent-ink:#0f1a13; --soft:#1e3227; --new:#7cc49b; --old:#d0a46c; --warn:#f0c26a; --warn-soft:#2e2615; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;font-weight:400;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:max(8px, env(safe-area-inset-top, 0px)) 48px}
+.wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.draft{margin-top:12px;align-self:flex-start;font-size:13px;font-weight:500;color:var(--warn);background:var(--warn-soft);border-radius:999px;padding:4px 12px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(28px,5vw,40px);line-height:1.12;margin:0;text-wrap:balance;letter-spacing:-.01em}
+.lede{margin:8px 0 0;color:var(--muted);max-width:60ch}
+.ask{display:flex;flex-direction:column;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+.q{display:flex;flex-direction:column;gap:8px}
+.qlabel{font-weight:600;font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:inherit;font-size:15px;font-weight:500;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:7px 14px;cursor:pointer;min-height:40px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip:focus-visible,select:focus-visible,input:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.searchrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.search{flex:1 1 220px;min-width:0;font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+details.more summary{cursor:pointer;font-weight:500;color:var(--accent);list-style:none;padding:4px 0}
+details.more summary::-webkit-details-marker{display:none}
+details.more summary::before{content:"+ "}
+details.more[open] summary::before{content:"− "}
+.moregrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:12px}
+.moregrid select{width:100%;font:inherit;font-size:15px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.check{display:flex;gap:8px;align-items:center;font-size:15px}
+.check input{width:18px;height:18px;accent-color:var(--accent)}
+.summary{display:flex;flex-direction:column;gap:10px}
+.sumline{font-size:17px;margin:0}
+.sumline b{font-weight:600}
+.strip{width:100%;overflow-x:auto}
+.strip svg{display:block;width:100%;min-width:520px;height:auto}
+.strip text{fill:var(--muted);font-family:var(--body);font-size:12px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.toolbar select{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.cards{display:flex;flex-direction:column;gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card h2{font-family:var(--display);font-weight:500;font-size:20px;margin:0;line-height:1.25;text-wrap:balance}
+.meta{font-size:14px;color:var(--muted)}
+.offer{border-top:1px solid var(--line);padding-top:10px;display:grid;grid-template-columns:1fr auto;gap:4px 14px;align-items:start}
+.oname{font-weight:500;min-width:0}
+.price{font-weight:600;font-size:18px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tags{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:13px;padding:2px 9px;border-radius:999px;background:var(--soft);color:var(--ink)}
+.tag.new{box-shadow:inset 3px 0 0 var(--new)}
+.tag.old{box-shadow:inset 3px 0 0 var(--old)}
+.tag.flag{background:var(--warn-soft);color:var(--warn)}
+.odet{grid-column:1 / -1}
+.odet summary{cursor:pointer;font-size:14px;color:var(--accent);font-weight:500}
+.odet dl{margin:8px 0 0;display:grid;grid-template-columns:minmax(0,150px) 1fr;gap:4px 12px;font-size:14px}
+.odet dt{color:var(--muted)}
+.odet dd{margin:0;min-width:0}
+.cardfoot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.fakelink{color:var(--accent);font-weight:500}
+.askcard .price{color:var(--muted);font-size:16px}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:24px;text-align:center;color:var(--muted)}
+.empty button{font:inherit;font-weight:500;margin-top:10px;background:var(--accent);color:var(--accent-ink);border:0;border-radius:999px;padding:8px 16px;cursor:pointer}
+.about{font-size:15px;color:var(--muted);border-top:1px solid var(--line);padding-top:18px}
+.about h3,.notes h3{font-family:var(--display);font-weight:500;font-size:19px;color:var(--ink);margin:0 0 6px}
+.about p{margin:0 0 8px;max-width:65ch}
+.notes{background:var(--warn-soft);border-radius:14px;padding:16px 18px}
+.notes summary{cursor:pointer;font-weight:600;color:var(--warn)}
+.notes .body{margin-top:12px;display:flex;flex-direction:column;gap:12px;font-size:15px}
+.notes h4{margin:0 0 4px;font-size:15px;font-weight:600}
+.notes ul{margin:0;padding-left:20px}
+.notes p{margin:0}
+@media (max-width:480px){ .offer{grid-template-columns:1fr} .price{text-align:left} }
+@media (prefers-reduced-motion:no-preference){ .card{transition:border-color .15s} .card:hover{border-color:var(--accent)} }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <span class="draft">Research in progress · more places are added as they are checked</span>
+  <header>
+    <h1>What do other places charge to dedicate a tree?</h1>
+    <p class="lede">Real prices that gardens, senior living communities, neighborhoods and campuses post for tree dedications. Find places like yours and see what they offer.</p>
+  </header>
+
+  <section class="ask" aria-label="Find prices">
+    <div class="q">
+      <span class="qlabel" id="q1">1. Show me places like…</span>
+      <div class="chips" role="group" aria-labelledby="q1" id="typeChips"></div>
+    </div>
+    <div class="q">
+      <span class="qlabel" id="q2">2. The kind of gift</span>
+      <div class="chips" role="group" aria-labelledby="q2" id="giftChips"></div>
+    </div>
+    <div class="searchrow">
+      <input id="search" class="search" type="search" placeholder="Search by name or state, e.g. Florida or Kendal" aria-label="Search by name or state">
+    </div>
+    <details class="more" id="more">
+      <summary>More choices</summary>
+      <div class="moregrid">
+        <label class="q"><span class="qlabel">How long it lasts</span>
+          <select id="term">
+            <option value="">Any length</option>
+            <option value="years">A set number of years</option>
+            <option value="life">For the life of the tree</option>
+            <option value="permanent">Described as permanent</option>
+          </select></label>
+        <label class="q"><span class="qlabel">Budget (US dollars)</span>
+          <select id="budget">
+            <option value="">Any price</option>
+            <option value="0-499">Under $500</option>
+            <option value="500-1499">$500 to $1,499</option>
+            <option value="1500-4999">$1,500 to $4,999</option>
+            <option value="5000-1e9">$5,000 and up</option>
+          </select></label>
+        <div class="q"><span class="qlabel">Must include</span>
+          <label class="check"><input type="checkbox" id="plaque"> A plaque or marker at the tree</label>
+          <label class="check"><input type="checkbox" id="online"> An online tribute page or map</label>
+        </div>
+        <div class="q"><span class="qlabel">Also show</span>
+          <label class="check"><input type="checkbox" id="intl" checked> Places outside the US</label>
+          <label class="check"><input type="checkbox" id="asks"> Places that ask you to call for a price</label>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section class="summary" aria-live="polite">
+    <p class="sumline" id="sumline"></p>
+    <div class="strip" id="strip"></div>
+    <div class="legend"><span><span class="dot" style="background:var(--new)"></span>Plant a new tree</span><span><span class="dot" style="background:var(--old)"></span>Dedicate a tree already growing</span><span><span class="dot" style="background:var(--muted)"></span>Not stated</span></div>
+  </section>
+
+  <div class="toolbar">
+    <span id="count"></span>
+    <label>Sort <select id="sort">
+      <option value="low">Lowest price first</option>
+      <option value="high">Highest price first</option>
+      <option value="name">Name, A to Z</option>
+    </select></label>
+  </div>
+
+  <section class="cards" id="cards"></section>
+
+  <section class="about">
+    <h3>About these prices</h3>
+    <p>These are prices each place posts on its own website, checked in November 2026. They are what is asked, not proof of what donors actually paid. Always confirm with the place before you rely on a number.</p>
+    <p>Prices stay in each country's own currency. The budget filter and the price chart use US-dollar prices only.</p>
+  </section>
+</div>
+
+<script>
+let DATA = [];
+const TYPES=[["","Any kind"],["senior","Senior living"],["neighborhood","Neighborhood or HOA"],["city","City or town"],["garden","Public garden or park"],["campus","College campus"],["club","Club"]];
+const TYPE_LABEL=Object.fromEntries(TYPES);
+const GIFTS=[["","Any gift"],["new","Plant a new tree"],["existing","Dedicate a tree already growing"]];
+const state={type:"senior",gift:""};
+const $=id=>document.getElementById(id);
+function chips(el,list,key){
+  el.innerHTML="";
+  list.forEach(([v,l])=>{const b=document.createElement("button");b.className="chip";b.type="button";b.textContent=l;
+    b.setAttribute("aria-pressed",String(state[key]===v));b.onclick=()=>{state[key]=v;chips(el,list,key);render();};el.appendChild(b);});
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function offerOk(o){
+  if(state.gift==="new"&&!(o.gift==="new"||o.gift==="either"))return false;
+  if(state.gift==="existing"&&!(o.gift==="existing"||o.gift==="either"))return false;
+  const t=$("term").value; if(t&&o.term!==t)return false;
+  if($("plaque").checked&&!o.plaque)return false;
+  if($("online").checked&&!o.online)return false;
+  const b=$("budget").value; if(b){const [lo,hi]=b.split("-").map(Number); if(o.usd==null||o.usd<lo||o.usd>hi)return false;}
+  return true;
+}
+function placeOk(p){
+  if(state.type&&p.type!==state.type)return false;
+  if(!$("intl").checked&&!p.us)return false;
+  const q=$("search").value.trim().toLowerCase();
+  if(q&&!(p.name.toLowerCase().includes(q)||p.where.toLowerCase().includes(q)||(STATES[p.where]||"").toLowerCase().includes(q)))return false;
+  return true;
+}
+const STATES={AL:"Alabama",AZ:"Arizona",CA:"California",CO:"Colorado",DC:"Washington DC",FL:"Florida",GA:"Georgia",IL:"Illinois",KY:"Kentucky",MA:"Massachusetts",MI:"Michigan",MO:"Missouri",MT:"Montana",NC:"North Carolina",NV:"Nevada",NY:"New York",OH:"Ohio",PA:"Pennsylvania",SC:"South Carolina",TN:"Tennessee",TX:"Texas",VA:"Virginia",WI:"Wisconsin"};
+function quant(a,q){const s=[...a].sort((x,y)=>x-y);const i=(s.length-1)*q,lo=Math.floor(i),hi=Math.ceil(i);return s[lo]+(s[hi]-s[lo])*(i-lo);}
+function usd(n){n=n>=1000?Math.round(n/50)*50:Math.round(n/10)*10;return "$"+n.toLocaleString("en-US");}
+function strip(offers){
+  const W=760,H=86,L=24,R=24,min=Math.log(150),max=Math.log(30000);
+  const x=v=>L+(Math.log(v)-min)/(max-min)*(W-L-R);
+  const ticks=[250,500,1000,2500,5000,10000,25000];
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Each dot is one US-dollar price on a stretched scale from $250 to $25,000">`;
+  s+=`<line x1="${L}" x2="${W-R}" y1="46" y2="46" stroke="var(--line)" stroke-width="2"/>`;
+  ticks.forEach(t=>{s+=`<line x1="${x(t)}" x2="${x(t)}" y1="40" y2="52" stroke="var(--line)"/><text x="${x(t)}" y="72" text-anchor="middle">${t>=1000?"$"+t/1000+"k":"$"+t}</text>`;});
+  const used={};
+  offers.forEach(o=>{const cx=Math.round(x(o.usd));const k=Math.round(cx/7);used[k]=(used[k]||0)+1;const cy=46-(used[k]-1)*9-0;
+    const col=o.gift==="new"?"var(--new)":o.gift==="existing"?"var(--old)":"var(--muted)";
+    s+=`<circle cx="${cx}" cy="${Math.max(6,cy)}" r="4.5" fill="${col}" fill-opacity=".85"><title>${esc(o._place)}: ${esc(o.price)}</title></circle>`;});
+  return s+"</svg>";
+}
+function render(){
+  const asks=$("asks").checked;
+  let shown=[];
+  DATA.forEach(p=>{ if(!placeOk(p))return;
+    if(!p.offers.length){ if(asks&&!$("budget").value&&!$("term").value&&!$("plaque").checked&&!$("online").checked) shown.push({...p,match:[]}); return;}
+    const m=p.offers.filter(offerOk); if(m.length) shown.push({...p,match:m}); });
+  const sort=$("sort").value;
+  const key=p=>{const v=p.match.map(o=>o.usd).filter(v=>v!=null);return v.length?Math.min(...v):null;};
+  shown.sort((a,b)=>{ if(sort==="name")return a.name.localeCompare(b.name);
+    const ka=key(a),kb=key(b); if(ka==null&&kb==null)return a.name.localeCompare(b.name); if(ka==null)return 1; if(kb==null)return -1;
+    return sort==="low"?ka-kb:kb-ka;});
+  const offers=shown.flatMap(p=>p.match.map(o=>({...o,_place:p.name})));
+  const us=offers.filter(o=>o.usd!=null);
+  const priced=shown.filter(p=>p.match.length).length;
+  $("count").textContent=`${priced} place${priced===1?"":"s"} · ${offers.length} option${offers.length===1?"":"s"}`+(shown.length>priced?` · ${shown.length-priced} with price on request`:"");
+  if(us.length>=4){
+    $("sumline").innerHTML=`Most of these US prices fall between <b>${usd(quant(us.map(o=>o.usd),.25))}</b> and <b>${usd(quant(us.map(o=>o.usd),.75))}</b>. The middle price is <b>${usd(quant(us.map(o=>o.usd),.5))}</b>.`;
+  } else if(us.length){ $("sumline").innerHTML=`Only ${us.length} US price${us.length===1?"":"s"} match. Widen your choices for a fuller picture.`; }
+  else $("sumline").textContent="No US-dollar prices match these choices yet.";
+  $("strip").innerHTML=us.length?strip(us):"";
+  const c=$("cards");
+  if(!shown.length){c.innerHTML=`<div class="empty">Nothing matches all of these choices yet.<br><button type="button" id="reset">Start over</button></div>`;$("reset").onclick=reset;return;}
+  c.innerHTML=shown.map(p=>{
+    const where=STATES[p.where]||p.where;
+    if(!p.match.length) return `<article class="card askcard"><h2>${esc(p.name)}</h2><div class="meta">${TYPE_LABEL[p.type]} · ${esc(where)}</div>
+      <div class="offer"><div class="oname">${esc(p.ask)}</div><div class="price">Price on request</div></div>
+      <div class="cardfoot"><span>Checked ${date(p.checked)}</span></div></article>`;
+    return `<article class="card"><h2>${esc(p.name)}</h2><div class="meta">${TYPE_LABEL[p.type]} · ${esc(where)}</div>`+
+      p.match.map(o=>{
+        const tags=[];
+        if(o.gift==="new")tags.push(`<span class="tag new">New planting</span>`);
+        else if(o.gift==="existing")tags.push(`<span class="tag old">Tree already growing</span>`);
+        else if(o.gift==="either")tags.push(`<span class="tag">New or existing</span>`);
+        else tags.push(`<span class="tag">Tree type not stated</span>`);
+        if(o.size)tags.push(`<span class="tag">${esc(o.size)}</span>`);
+        tags.push(`<span class="tag">${esc(o.termLabel)}</span>`);
+        tags.push(`<span class="tag">${o.plaque?"Plaque or marker":"No plaque"}</span>`);
+        if(o.online)tags.push(`<span class="tag">Online page</span>`);
+        o.extra.forEach(e=>tags.push(`<span class="tag flag">${esc(e)}</span>`));
+        const det=o.details.length?`<details class="odet"><summary>More about this option</summary><dl>${o.details.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl></details>`:"";
+        return `<div class="offer"><div class="oname">${esc(o.name)}</div><div class="price">${esc(o.price)}</div><div class="tags">${tags.join("")}</div>${det}</div>`;
+      }).join("")+
+      `<div class="cardfoot"><span>Checked ${date(p.checked)}</span></div></article>`;
+  }).join("");
+}
+function date(s){const d=new Date(s+"T12:00:00");return d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});}
+function reset(){state.type="";state.gift="";["term","budget"].forEach(i=>$(i).value="");["plaque","online","asks"].forEach(i=>$(i).checked=false);$("intl").checked=true;$("search").value="";init();}
+function init(){chips($("typeChips"),TYPES,"type");chips($("giftChips"),GIFTS,"gift");render();}
+["term","budget","plaque","online","intl","asks","sort"].forEach(i=>$(i).addEventListener("change",render));
+$("search").addEventListener("input",render);
+fetch("data.json",{cache:"no-cache"}).then(r=>r.json()).then(d=>{DATA=d;init();}).catch(()=>{$("cards").innerHTML='<div class="empty">The price list didn\'t load. Refresh the page to try again.</div>';});
+</script>
+
+</body>
+</html>
