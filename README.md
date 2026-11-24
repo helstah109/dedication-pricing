@@ -5,10 +5,13 @@ A public, searchable list of what gardens, senior living communities, neighborho
 ## What's here
 
 - `index.html`: the page people see.
-- `data.json`: the price list the page reads. Updating prices means replacing only this file.
-- `tools/gen.py`: rebuilds `data.json` from the research spreadsheets in TRB-tribute-platform. With both repos side by side, run `python3 -I tools/gen.py --json data.json` from this folder (or set TRB_PRICING_DIR to the research folder).
+- `data.json`: the price list the page reads, built from the reviewed master list in TRB-tribute-platform. Don't edit it by hand.
+- `tools/gen.py`: rebuilds `data.json` from the research master list.
+- `.github/workflows/update-prices.yml`: does that rebuild once a day by itself.
 - `00-Inbox/`: drop files here to be processed later.
 
-`tools/`, `00-Inbox/` and this README are not published on the website.
+Agents: read [AGENTS.md](AGENTS.md) for how prices get added and the site updated.
+
+`tools/`, `00-Inbox/`, `.github/`, the agent files and this README are not published on the website.
 
 Every change pushed to `main` goes live on Vercel by itself.

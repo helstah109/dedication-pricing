@@ -1,6 +1,19 @@
-import csv, glob, json, os, re, sys
-base = os.environ.get('TRB_PRICING_DIR', '../TRB-tribute-platform/TRB_Research/TRB_Dedication-Pricing').rstrip('/') + '/'
-files = [base+'TRB_Dedication-Pricing-Master-Dataset.csv'] + sorted(glob.glob(base+'workstreams/track-05/*Batch*.csv'))
+"""Rebuild data.json for the public price finder from the TRB research.
+
+Only the reviewed master list is published. Draft rows in workstreams/ never go live.
+Usage, from this folder:  python3 -I tools/gen.py --json data.json
+Set TRB_PRICING_DIR if the research folder is not next to this repo.
+"""
+import csv, json, os, re, sys
+def find_base():
+  env=os.environ.get('TRB_PRICING_DIR')
+  if env: return env.rstrip('/')+'/'
+  for name in ('TRB-tribute-platform','trb-tribute-platform'):
+    d='../'+name+'/TRB_Research/TRB_Dedication-Pricing'
+    if os.path.isdir(d): return d+'/'
+  sys.exit("Can't find the research folder. Put TRB-tribute-platform next to this repo, or set TRB_PRICING_DIR.")
+base = find_base()
+files = [base+'TRB_Dedication-Pricing-Master-Dataset.csv']
 GROUP = {'senior_living':'senior','private_residential':'neighborhood','municipality':'city',
  'botanical_garden':'garden','arboretum':'garden','conservancy':'garden','public_park':'garden',
  'nature_center':'garden','cultural_institution':'garden','university':'campus','club':'club','resort':'club','other':'garden'}
@@ -10,10 +23,16 @@ CURNAME = {'GBP':'British pounds','CAD':'Canadian dollars','EUR':'euros','AUD':'
 def money(c,v): return SYM.get(c,'')+f"{int(float(v)):,}"
 places = {}
 seen=set()
+problems=[]
 for f in files:
-  for r in csv.DictReader(open(f)):
-    if r['record_id'] in seen: continue
+  for n,r in enumerate(csv.DictReader(open(f,encoding='utf-8')),start=2):
+    where_=f"master list line {n} ({r.get('record_id') or 'no id'})"
+    if r['record_id'] in seen: problems.append(where_+": the same record_id is used twice"); continue
     seen.add(r['record_id'])
+    if r['segment'] not in GROUP: problems.append(where_+f": segment '{r['segment']}' is not one the finder knows; see the data schema"); continue
+    bad=[k for k in ('price_min','price_max','term_years') if r[k] and not re.fullmatch(r'\d+(\.\d+)?',r[k].strip())]
+    if bad: problems.append(where_+": "+', '.join(bad)+" must be plain numbers with no $ or commas"); continue
+    if r['availability'] in ('paused','sold_out','discontinued'): continue
     ts=r['tree_status']
     gift = 'new' if ts in ('new','new_or_recent') else 'existing' if ts.startswith('existing_') and ts!='existing_or_new' else 'either' if ts=='existing_or_new' else 'unclear'
     size = {'existing_heritage':'Landmark tree','existing_established':'Mature tree','existing_recent':'Recently planted','new_or_recent':'Young tree'}.get(ts,'')
@@ -56,6 +75,8 @@ ask=[('The Pines at Davidson','senior','NC','Level I arboretum. Donors pick from
      ('Herons Glen Recreation District','neighborhood','FL','Donor pays the actual cost of the tree or palm and planting.')]
 for n,t,w,d in ask:
   places[n]={'name':n,'type':t,'where':w,'us':True,'checked':'2026-11-23','ask':d,'offers':[]}
+if problems:
+  sys.exit("The price list was not rebuilt. Fix these rows in the master list first:\n- "+"\n- ".join(problems))
 data=list(places.values())
 if sys.argv[1]=="--json":
   open(sys.argv[2],"w").write(json.dumps(data,ensure_ascii=False,indent=0)); print(len(data),"places",sum(len(p["offers"]) for p in data),"offers"); sys.exit()

@@ -1,0 +1,63 @@
+name: Update prices from research
+
+# Copies the reviewed master price list from the research repo into data.json.
+# Needs the repo secret TRB_READ_TOKEN: a read-only key to helstah109/TRB-tribute-platform.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "15 11 * * *"   # once a day, early morning Eastern
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-prices
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the research key is set
+        id: key
+        env:
+          TOKEN: ${{ secrets.TRB_READ_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::notice::The research key (TRB_READ_TOKEN) is not set yet, so nothing was updated. See AGENTS.md."
+            echo "ready=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=yes" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.ready == 'yes'
+
+      - name: Get the research price list
+        if: steps.key.outputs.ready == 'yes'
+        uses: actions/checkout@v4
+        with:
+          repository: helstah109/TRB-tribute-platform
+          token: ${{ secrets.TRB_READ_TOKEN }}
+          path: research
+          sparse-checkout: TRB_Research/TRB_Dedication-Pricing
+          persist-credentials: false
+
+      - name: Rebuild data.json
+        if: steps.key.outputs.ready == 'yes'
+        run: |
+          TRB_PRICING_DIR=research/TRB_Research/TRB_Dedication-Pricing python3 -I tools/gen.py --json data.json
+          rm -rf research
+
+      - name: Save if the prices changed
+        if: steps.key.outputs.ready == 'yes'
+        run: |
+          if git diff --quiet -- data.json; then
+            echo "No price changes."
+            exit 0
+          fi
+          git config user.name "helstah109"
+          git config user.email "papp.helen.m@gmail.com"
+          git add data.json
+          git commit -m "Update prices from the research master list"
+          git push
