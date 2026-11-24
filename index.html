@@ -221,7 +221,7 @@ function render(){
     if(!p.offers.length){ if(asks&&!$("budget").value&&!$("term").value&&!$("plaque").checked&&!$("online").checked) shown.push({...p,match:[]}); return;}
     const m=p.offers.filter(offerOk); if(m.length) shown.push({...p,match:m}); });
   const sort=$("sort").value;
-  const key=p=>{const v=p.match.map(o=>o.usd).filter(v=>v!=null);return v.length?Math.min(...v):null;};
+  const key=p=>{const v=p.match.map(o=>o.usd).filter(v=>v!=null);return v.length?(sort==="high"?Math.max(...v):Math.min(...v)):null;};
   shown.sort((a,b)=>{ if(sort==="name")return a.name.localeCompare(b.name);
     const ka=key(a),kb=key(b); if(ka==null&&kb==null)return a.name.localeCompare(b.name); if(ka==null)return 1; if(kb==null)return -1;
     return sort==="low"?ka-kb:kb-ka;});
